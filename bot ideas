@@ -1,0 +1,22 @@
+- put student questions into a question channel
+  - "$question"
+  
+- good behaviour levels and points to incentivise participation and good behaviour
+  - teacher/admin role adds/removes points for students
+  ADMIN CALLS
+  - "$addpoints @user"
+  - "$removepoints @user"
+  STUDENT CALLS
+  - "$redeem (??? something??)"
+
+- hall pass when students leave and it keeps track of who is gone and for how long
+  - "$afk"
+  - "$here"
+  ADMIN CALLS
+  - "$timeaway @user"
+  
+- take attendance
+  - students react to attendance message
+  - bot does a count to see whos here and who's not
+  - bot can export data for teacher to access and record
+
