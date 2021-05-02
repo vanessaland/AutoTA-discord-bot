@@ -1,4 +1,4 @@
-# AutoTA-discord-bot
+# AuToTA-discord-bot
 
 ## Inspiration
 Due to the COVID-19 pandemic, most educational institutions around the world have switched to online learning alternatives. We've read on the news about how difficult it is for young students to adjust to virtual learning because of how important social interaction and visual learning is for children. This is where our inspiration came from, to tackle the challenge of the online learning transition.
