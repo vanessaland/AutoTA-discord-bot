@@ -60,9 +60,11 @@ async def question(ctx, *, arg):
   channel = bot.get_channel(838130738729189448)
   await channel.send('<@' + str(ctx.message.author.id) + '> asked: \"' + str(arg) + '\"')
 
+
 # ~~~ POINTS SYSTEM ~~~ #
 #  -variables-  #
 add_point_msgs = [">, great job! You just got 1 point!", ">, impressive! Here's 1 point!", ">, you just got 1 point! :tada: :tada: :tada:"]
+redeem_point_msgs = [">, you just redeemed a reward.", ">, enjoy your reward!", ">, OwO what's this? A reward?", ">, :eyes: you redeemed a reward!", ">, congratulations! You just redeemed an award."]
 reward_cost = 0
 
 
@@ -200,11 +202,28 @@ async def pointsof(ctx, student: discord.Member):
 
 
 @bot.command()
-async def reasons(ctx, student: discord.Member):
-  """ Retrieve the reasons why student gained or lost points. """
+async def redeem(ctx, student: discord.Member):
+  """ Let an admin redeem a reward for a student. """
   if ctx.message.author.guild_permissions.administrator:
     teachers_text_channel = ctx.guild.get_channel(838184342999924776)
-    await teachers_text_channel.send("<@" + str(student.id) + " has {0}.".format(users_points[str(student.id)]["current points"]))
+    with open('students_points.json', 'r') as f:
+      users_points = json.load(f)
+  
+    if int(users_points[str(student.id)]['current points']) >= reward_cost:
+      new_val = int(users_points[str(student.id)]["current points"]) - reward_cost
+      users_points[str(student.id)]['current points'] = str(new_val)
+    
+    elif int(users_points[str(student.id)]['current points']) < reward_cost:
+      return await ctx.channel.send("This student doesn't have enough points to redeem a reward.")
+
+    with open('students_points.json', 'w') as f:
+      json.dump(users_points, f)
+    await teachers_text_channel.send("<@" + str(student.id) + "> has redeemed a reward for {0} points. They now have {1} points.".format(reward_cost, users_points[str(student.id)]["current points"]))
+    await ctx.channel.send("<@" + str(student.id) + redeem_point_msgs[randint(0, len(redeem_point_msgs)-1)] + ' You can use the $mypoints command to see your new points balance.')
+  
+  else:
+    await ctx.send("You don't have permission to access this command.")
+  return
 
 
 # Take attendance from Students
@@ -249,12 +268,23 @@ async def on_raw_reaction_remove(payload):
 
 @bot.command()
 async def here(ctx):
+  embed_message = discord.Embed(color = discord.Color.green())
+  embed_message.set_author(name="Daily Attendance: Results")
+  embed_message.add_field(name="Eunice", value='Present')
+  embed_message.add_field(name="Abdul", value='Present')
+  embed_message.add_field(name="Vanessa", value='Present')
+  embed_message.add_field(name="Robert", value='Absent')
+  embed_message.add_field(name="Ashley", value='Absent')
+  embed_message.add_field(name="John", value='Absent')
 
-  #for guild in bot.guilds:
-  #  for member in guild.members:
-  #    print(member)
   channel = bot.get_channel(838218145600241674)
-  await channel.send(guild.users)
+  print('channel: ', channel)
+  guild_id = 837874749211541504
+  guild = discord.utils.find(lambda g : g.id == guild_id, bot.guilds)
+  print('guild: ', guild)
+  for member in bot.get_all_members():
+    print('member: ', member)
+    await channel.send(embed=embed_message)
 
 
 # ~~~ HALL PASS ~~~ #
