@@ -32,13 +32,7 @@ async def on_member_join(member):
     json.dump(users_attendance, attendance_file)
 
   # points file
-  with open('points.json', 'r') as points_file:
-    users_points = json.load(points_file)
 
-  await add_new_user_points(users_points, member)
-
-  with open('points.json', 'w') as points_file:
-    json.dump(users_points, points_file)
 
 
 # Messages
@@ -75,51 +69,88 @@ add_point_msgs = [", great job! You just got 1 point!", ", we're impressed. Here
 remove_point_msgs = []
 reward_cost = 5
 
-async def add_new_user_points(users_points, user: discord.Member):
+
+async def addstudentpoints(ctx, users_points, user: discord.Member):
+  with open('points.json', 'r') as points_file:
+    users_points = json.load(points_file)
+
   if not user.id in users_points:
     users_points[user.id]['current points'] = 0
+    users_points[user.id]['positive'] = []
+    users_points[user.id]['negative'] = []
 
-async def add_point(users_points, student: discord.Member):
+  with open('points.json', 'w') as points_file:
+    json.dump(users_points, points_file)
+
+
+async def add_point(users_points, student: discord.Member, reason):
   users_points[student.id]['current points'] += 1
+  if reason is not None:
+    users_points[user.id]['positive'].append(reason)
+
+
+async def remove_point(users_points, student: discord.Member, reason):
+  users_points[student.id]['current points'] -= 1
+  if reason is not None:
+    users_points[user.id]['negative'].append(reason)
 
 
 @bot.command()
-async def add(ctx, student: discord.Member):
+async def add(ctx, student: discord.Member, reason:str=None):
   """ Add 1 point to student's total points. """
-  if ctx.message.author.server_permissions.administrator:
-    add_point(student)
+  if ctx.message.author.guild_permissions.administrator:
+    add_point(student, reason)
     return await ctx.channel.send(str(student.id) + add_point_msgs[randint(0, len(add_point_msgs - 1))])
 
   await ctx.channel.send("Oops! You don't have permission to access this command.")
 
+
 @bot.command()
-async def remove(ctx, student: discord.Member):
+async def remove(ctx, student: discord.Member, reason:str=None):
   """ Subtract 1 point from student's total points. """
-  if ctx.message.author.server_permissions.administrator:
-    print("")# edit student.id's points in file
-  
-  await ctx.channel.send("Oh no! You don't have permission to access this command.")
+
+  if ctx.message.author.guild_permissions.administrator:
+    teachers_text_channel = ctx.guild.get_channel(838184342999924776)
+    remove_point(student, reason)
+    await student.send("Uh oh. You just lost 1 point in your class, " + ctx.guild.name + ".")
+    if reason is not None:
+      await teachers_text_channel.send("You removed 1 point from <@" + str(student.id) + ">'s total points because: " + '"' + reason + '".')
+    else:
+      await teachers_text_channel.send("You removed 1 point from <@" + str(student.id) + ">'s total points.")
+  else: 
+    await ctx.channel.send("Oops! You don't have permission to access this command.")
+  return
+
 
 @bot.command()
 async def setrewardvalue(ctx, value:int):
   """ Let an administrator set the number of points needed for a reward. Default value is 5 points. """
-  if ctx.message.author.server_permissions.administrator:
+  if ctx.message.author.guild_permissions.administrator:
     reward_cost = value
-    await ctx.message.author.send("You have set the cost of a reward in server " +  + )
-  pass
+    await ctx.message.author.send("You have set the cost of a reward to " + str(value) + " in server " + ctx.guild.name + ".")
+  return
+
 
 @bot.command()
 async def mypoints(ctx):
-  id = message.author.id
-  if id in users:
-    await message.channel.send("<@" + str(id) + "has {0.pts}.".format(users[id]['points'])) # tentative lmao
+  student = message.author
+  if student.id in users_points:
+    await ctx.send("<@" + str(student.id) + " has {0.pts}.".format(users_points[student.id]['current points']))
   else:
-    await ctx.channel.send("You don't have any points yet! Ask your teacher to set up your profile.")
-    
+    await ctx.send("error. sad.")
+  return  
+
+
+@bot.command()
+async def points(ctx, student: discord.Member):
+  if ctx.message.author.guild_permissions.administrator:
+    teachers_text_channel = ctx.guild.get_channel(838184342999924776)
+    await teachers_text_channel.send("<@" + str(student.id) + " has {0.pts}.".format(users_points[student.id]['current points']))
+
 
 # Take attendance from Students
 @bot.command()
-async def test(ctx):
+async def attendance(ctx):
 
   embed_message = discord.Embed(color = discord.Color.dark_gold())
   embed_message.set_author(name="Daily Attendance")
@@ -134,7 +165,7 @@ async def on_reaction_add(reaction, user):
   if reaction.message.channel.id != '838218145600241674':
     return
   if reaction.emoji == "\U0001f642":
-    role = discord.utils.get(user.server.roles, name="Present")
+    role = discord.utils.get(user.guild.roles, name="Present")
     await bot.add_roles(user, role)
 
 
