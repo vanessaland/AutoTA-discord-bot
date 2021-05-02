@@ -7,13 +7,14 @@ from stay_awake import stay_awake
 
 from random import randint
 
+from export_file import *
+
 # intents = discord.Intents().all()
 # client = discord.Bot(prefix='', intents=intents)
 bot = commands.Bot(command_prefix = '$')
 permissions = discord.Permissions.all()
 
 stay_awake()
-# bot = discord.Client()
 
 # Bot Setup
 @bot.event
@@ -30,8 +31,6 @@ async def on_member_join(member):
 
   with open('attendance.json', 'w') as attendance_file:
     json.dump(users_attendance, attendance_file)
-
-  # points file
 
 
 
@@ -59,93 +58,153 @@ async def new(ctx, category, name):
 @bot.command()
 async def question(ctx, *, arg):
   channel = bot.get_channel(838130738729189448)
-  await channel.send(arg)
+  await channel.send('<@' + str(ctx.message.author.id) + '> asked: \"' + str(arg) + '\"')
 
-
-# POINTS HELL YEAH
-
-# --- variables for POINTS --- #
-add_point_msgs = [", great job! You just got 1 point!", ", we're impressed. Here's 1 point!", ", you just got 1 point! :tada: :tada: :tada:"]
-remove_point_msgs = []
-reward_cost = 5
-
-
-async def addstudentpoints(ctx, users_points, user: discord.Member):
-  with open('points.json', 'r') as points_file:
-    users_points = json.load(points_file)
-
-  if not user.id in users_points:
-    users_points[user.id]['current points'] = 0
-    users_points[user.id]['positive'] = []
-    users_points[user.id]['negative'] = []
-
-  with open('points.json', 'w') as points_file:
-    json.dump(users_points, points_file)
-
-
-async def add_point(users_points, student: discord.Member, reason):
-  users_points[student.id]['current points'] += 1
-  if reason is not None:
-    users_points[user.id]['positive'].append(reason)
-
-
-async def remove_point(users_points, student: discord.Member, reason):
-  users_points[student.id]['current points'] -= 1
-  if reason is not None:
-    users_points[user.id]['negative'].append(reason)
+# ~~~ POINTS SYSTEM ~~~ #
+#  -variables-  #
+add_point_msgs = [">, great job! You just got 1 point!", ">, impressive! Here's 1 point!", ">, you just got 1 point! :tada: :tada: :tada:"]
+reward_cost = 0
 
 
 @bot.command()
-async def add(ctx, student: discord.Member, reason:str=None):
+async def setupclass(ctx, value):
+  if ctx.author.guild_permissions.administrator:
+    for s in ctx.guild.members:
+      if "Students" in s.roles:
+        await setup_new_student(s)
+    await setrewardvalue(ctx, ctx.author, int(value))
+    await ctx.channel.send('This class is set up and ready to go!')
+  return
+
+
+async def setup_new_student(user):
+  with open('students_points.json', 'r') as f:
+    users_points = json.load(f)
+
+  users_points = {}
+  users_points[str(user.id)] = {}
+  users_points[str(user.id)]["current points"] = 0
+  users_points[str(user.id)]["positive"] = []
+  users_points[str(user.id)]["negative"] = []
+
+  with open('students_points.json', 'w') as f:
+    json.dump(users_points, f)
+
+
+@bot.command()
+async def resetrewardvalue(ctx, value):
+  """ Let an administrator change the reward cost. """
+  await setrewardvalue(ctx, ctx.author, int(value))
+  await ctx.channel.send('Rewards are now worth ' + value + ' points.')
+
+
+@bot.command()
+async def getrewardvalue(ctx):
+  await ctx.channel.send('You can redeem a reward for ' + str(reward_cost) + ' points.')
+
+
+async def setrewardvalue(ctx, author: discord.Member, value:int):
+  """ Let an administrator set the number of points needed for a reward."""
+  if author.guild_permissions.administrator:
+    global reward_cost
+    reward_cost = value
+    await author.send("You have set the cost of a reward to " + str(value) + " in server " + ctx.guild.name + ".")
+  return
+
+
+async def add_point(student: discord.Member, reason: str):
+  with open('students_points.json', 'r') as f:
+    users_points = json.load(f)
+
+  new_val = int(users_points[str(student.id)]["current points"]) + 1
+  users_points[str(student.id)]['current points'] = str(new_val)
+
+  if reason is not None:
+    users_points[str(student.id)]['positive'].append(reason)
+  
+  with open('students_points.json', 'w') as f:
+    json.dump(users_points, f)
+
+
+async def remove_point(student: discord.Member, reason: str):
+  with open('students_points.json', 'r') as f:
+    users_points = json.load(f)
+  
+  if int(users_points[str(student.id)]['current points']) > 0:
+    new_val = int(users_points[str(student.id)]["current points"]) - 1
+    users_points[str(student.id)]['current points'] = str(new_val)
+
+    if reason is not None:
+      users_points[str(student.id)]['negative'].append(reason)
+  
+  with open('students_points.json', 'w') as f:
+    json.dump(users_points, f)
+
+
+@bot.command()
+async def add(ctx, student: discord.Member, *, args = None):
   """ Add 1 point to student's total points. """
   if ctx.message.author.guild_permissions.administrator:
-    add_point(student, reason)
-    return await ctx.channel.send(str(student.id) + add_point_msgs[randint(0, len(add_point_msgs - 1))])
+    if args is not None:
+      args = ''.join(args[:])
+    await add_point(student, args)
+    return await ctx.channel.send('<@' + str(student.id) + add_point_msgs[randint(0, len(add_point_msgs)-1)])
 
   await ctx.channel.send("Oops! You don't have permission to access this command.")
 
 
 @bot.command()
-async def remove(ctx, student: discord.Member, reason:str=None):
+async def remove(ctx, student: discord.Member, *, args = None):
   """ Subtract 1 point from student's total points. """
-
   if ctx.message.author.guild_permissions.administrator:
     teachers_text_channel = ctx.guild.get_channel(838184342999924776)
-    remove_point(student, reason)
+    if args is not None:
+      args = ''.join(args[:])
+    await remove_point(student, args)
     await student.send("Uh oh. You just lost 1 point in your class, " + ctx.guild.name + ".")
-    if reason is not None:
-      await teachers_text_channel.send("You removed 1 point from <@" + str(student.id) + ">'s total points because: " + '"' + reason + '".')
+
+    if args is not None:
+      await teachers_text_channel.send("You removed 1 point from <@" + str(student.id) + ">'s total points because: " + '"' + args + '".')
     else:
       await teachers_text_channel.send("You removed 1 point from <@" + str(student.id) + ">'s total points.")
+
   else: 
     await ctx.channel.send("Oops! You don't have permission to access this command.")
-  return
 
-
-@bot.command()
-async def setrewardvalue(ctx, value:int):
-  """ Let an administrator set the number of points needed for a reward. Default value is 5 points. """
-  if ctx.message.author.guild_permissions.administrator:
-    reward_cost = value
-    await ctx.message.author.send("You have set the cost of a reward to " + str(value) + " in server " + ctx.guild.name + ".")
   return
 
 
 @bot.command()
 async def mypoints(ctx):
-  student = message.author
-  if student.id in users_points:
-    await ctx.send("<@" + str(student.id) + " has {0.pts}.".format(users_points[student.id]['current points']))
+  student = ctx.author
+  with open('students_points.json') as f:
+    users_points = json.load(f)
+  ret_points = users_points[str(student.id)]["current points"]
+  if str(student.id) in users_points:
+    await ctx.channel.send("<@" + str(student.id) + "> has {0} points.".format(ret_points))
   else:
-    await ctx.send("error. sad.")
+    await ctx.channel.send("error. sad.")
   return  
 
 
 @bot.command()
-async def points(ctx, student: discord.Member):
+async def pointsof(ctx, student: discord.Member):
+  with open('students_points.json') as f:
+    users_points = json.load(f)
   if ctx.message.author.guild_permissions.administrator:
     teachers_text_channel = ctx.guild.get_channel(838184342999924776)
-    await teachers_text_channel.send("<@" + str(student.id) + " has {0.pts}.".format(users_points[student.id]['current points']))
+    await teachers_text_channel.send("<@" + str(student.id) + "> has {} points.\nThey gained points for: {}\nThey lost points for: {}".format(users_points[str(student.id)]["current points"], users_points[str(student.id)]["positive"], users_points[str(student.id)]["negative"]))
+  else:
+    await ctx.send("You don't have permission to access this command.")
+  return
+
+
+@bot.command()
+async def reasons(ctx, student: discord.Member):
+  """ Retrieve the reasons why student gained or lost points. """
+  if ctx.message.author.guild_permissions.administrator:
+    teachers_text_channel = ctx.guild.get_channel(838184342999924776)
+    await teachers_text_channel.send("<@" + str(student.id) + " has {0}.".format(users_points[str(student.id)]["current points"]))
 
 
 # Take attendance from Students
@@ -158,10 +217,10 @@ async def attendance(ctx):
   channel = bot.get_channel(838218145600241674)
   message = await channel.send(embed=embed_message)
   await member.add_reaction(message, emoji='\U00002705')
+  await member.remove_reaction(message, emoji='\U00002705')
 
 @bot.event
 async def on_raw_reaction_add(payload):
-  message_id = payload.message_id
   guild_id = payload.guild_id
   guild = discord.utils.find(lambda g : g.id == guild_id, bot.guilds)
   if payload.emoji.name == '\U00002705':
@@ -170,11 +229,35 @@ async def on_raw_reaction_add(payload):
       member = payload.member
     if member is not None:
       await member.add_roles(role)
-      print('done')
+      print('Done')
     else:
       print('Member not found.')
 
-# hall pass
+@bot.event
+async def on_raw_reaction_remove(payload):
+  guild_id = payload.guild_id
+  guild = discord.utils.find(lambda g : g.id == guild_id, bot.guilds)
+  if payload.emoji.name == '\U00002705':
+    role = discord.utils.get(guild.roles, name='Present')
+    if role is not None:
+      member = payload.member
+    if member is not None:
+      await member.remove_roles(role)
+      print('Done')
+    else:
+      print('Member not found.')
+
+@bot.command()
+async def here(ctx):
+
+  #for guild in bot.guilds:
+  #  for member in guild.members:
+  #    print(member)
+  channel = bot.get_channel(838218145600241674)
+  await channel.send(guild.users)
+
+
+# ~~~ HALL PASS ~~~ #
 @bot.command()
 async def away(ctx):
   """ Move the user into the hallway voice channel."""
@@ -209,9 +292,8 @@ async def back(ctx):
     await student.move_to(classroom)
     await teachers_text_channel.send("<@" + str(student.id) + '> is back in the classroom.')
     await student.send('You are now back in the classroom.')
-  
   return
 
-
 bot.run(os.environ['BOT_TOKEN'])
+
 

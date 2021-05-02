@@ -1,0 +1,13 @@
+{
+  "student":{
+    "id":null,
+    "first_name":"John",
+    "last_name":"Smith",
+    "attendance":{
+      "jan1":false,
+      "jan2":false,
+      "jan3":false,
+      "jan4":false
+    }
+  }
+}
