@@ -33,7 +33,6 @@ async def on_member_join(member):
     json.dump(users_attendance, attendance_file)
 
 
-
 # Messages
 async def on_message(message):
   # Ignore messages from bot itself
@@ -184,8 +183,6 @@ async def mypoints(ctx):
   ret_points = users_points[str(student.id)]["current points"]
   if str(student.id) in users_points:
     await ctx.channel.send("<@" + str(student.id) + "> has {0} points.".format(ret_points))
-  else:
-    await ctx.channel.send("error. sad.")
   return  
 
 
