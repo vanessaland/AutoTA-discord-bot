@@ -151,24 +151,28 @@ async def points(ctx, student: discord.Member):
 # Take attendance from Students
 @bot.command()
 async def attendance(ctx):
-
   embed_message = discord.Embed(color = discord.Color.dark_gold())
   embed_message.set_author(name="Daily Attendance")
-  embed_message.add_field(name="Please react to this message with '\U0001f642' to let the teacher know you're here!", value='Click the emoji below.')
+  embed_message.add_field(name="Please react to this message with '\U00002705' to let the teacher know you're here!", value='Click the emoji below.')
 
   channel = bot.get_channel(838218145600241674)
   message = await channel.send(embed=embed_message)
-  await bot.add_reaction(message, emoji='\U0001f642')
+  await member.add_reaction(message, emoji='\U00002705')
 
 @bot.event
-async def on_reaction_add(reaction, user):
-  if reaction.message.channel.id != '838218145600241674':
-    return
-  if reaction.emoji == "\U0001f642":
-    role = discord.utils.get(user.guild.roles, name="Present")
-    await bot.add_roles(user, role)
-
-
+async def on_raw_reaction_add(payload):
+  message_id = payload.message_id
+  guild_id = payload.guild_id
+  guild = discord.utils.find(lambda g : g.id == guild_id, bot.guilds)
+  if payload.emoji.name == '\U00002705':
+    role = discord.utils.get(guild.roles, name='Present')
+    if role is not None:
+      member = payload.member
+    if member is not None:
+      await member.add_roles(role)
+      print('done')
+    else:
+      print('Member not found.')
 
 # hall pass
 @bot.command()
